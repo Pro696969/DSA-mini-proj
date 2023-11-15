@@ -1,8 +1,8 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include<ctype.h>
 
 typedef struct ACCOUNT
 {
@@ -20,23 +20,17 @@ int acct_number()
     return acctnum;
 }
 
-acct* check(acct *head, int key) 
+acct* check(acct* root, int acct_num)
 {
-
-  acct *current = head;
-  while (current != NULL) 
-  {
-    if (current->account_number == key)
+    if (root == NULL)
+        return NULL;
+    else
     {
-       return current;
-    } 
-    else 
-    {
-      current = current->right;
+        acct* cur = root;
+        while (cur != NULL && cur->account_number != acct_num)
+            cur = (acct_num < cur->account_number) ? cur->left : cur->right;
+        return cur;
     }
-  }
-
-  return NULL;
 }
 
 
@@ -97,16 +91,6 @@ acct* create_acct(acct* root)
 
     printf("Please Enter Your Name: ");
     scanf("%s", temp->acct_holder_name);
-    for(int i=0;i<strlen(temp->acct_holder_name);i++)
-    {
-        if(!(isalpha(temp->acct_holder_name[i])))
-            {
-                printf("Please Enter a valid Name: ");
-                scanf("%s",temp->acct_holder_name);
-                i=0;
-                continue;
-            }
-    }   
 
     // Generate a unique account number
     temp->account_number = acct_number();
@@ -170,21 +154,14 @@ void transfer(acct* root, int acct_num1, int acct_num2, float money)
 
     if (cur1 == NULL || cur2 == NULL)
     {
-        printf("Cannot make the transaction. Please enter the datails correctly and try again.\n");
+        printf("Cannot make the transaction. Please try again with proper information.\n");
         return;
     }
     else
     {
-        if(cur1->balance>=money)
-        {
         cur1->balance -= money;
         cur2->balance += money;
-         printf("Successfully transferred %.2f money from account number %d to account number %d\n", money, acct_num1, acct_num2);
-        }
-        else{
-            printf("insufficient balance . Try again\n");
-        }
-       
+        printf("Successfully transferred %.2f money from account number %d to account number %d\n", money, acct_num1, acct_num2);
     }
 }
 
@@ -208,29 +185,28 @@ void withdraw(acct* root, int acct_num, float money)
         printf("Could not find the bank account. Please try again later.\n");
     }
 }
-
-void delete_account(acct* root, int acct_num) 
+void delete_account(acct** root, int acct_num) 
 {
-    
-  acct*node=check(root,acct_num);
+    acct* cur = *root;
+    acct* prev = NULL;
 
-  if(node!=NULL)
-  {
-  if (node->left == NULL) {
-    root = node->right;
-    if (root != NULL) {
-      root->left = NULL;
+    while (cur != NULL && cur->account_number != acct_num) 
+    {
+        prev = cur;
+        cur = cur->right;
     }
-  } else {
-    
-    node->left->right = node->right;
-    if (node->right != NULL) {
-      node->right->left = node->left;
-    }
-  }
 
-  free(node);
-    
+    if (cur != NULL && cur->account_number == acct_num) 
+    {
+        if (prev == NULL) 
+        {
+            *root = cur->right;
+        } 
+        else
+        {
+           prev->right = cur->right;
+        }
+        free(cur);
         printf("Account number %d has been deleted.\n", acct_num);
     } 
     else 
@@ -238,6 +214,34 @@ void delete_account(acct* root, int acct_num)
         printf("Could not find the account. Please try again.\n");
     }
 }
+void writeToFile(acct* root, const char* filename){
+    FILE* file = fopen(filename, "w");
+    if (file == NULL)
+    {
+        printf("Error opening file for writing.\n");
+        return;
+    }
+    acct* cur = root;
+    fprintf(file, "Account Number,Holder Name,Balance\n\n");
+    while (cur != NULL)
+    {
+        fprintf(file, "%d\t%s\t%.2f\n", cur->account_number, cur->acct_holder_name, cur->balance);
+        cur = cur->right;
+    }
+    fclose(file);
+    printf("Accounts have been written to %s\n", filename);
+}
+
+void empl(acct* root, const char *code) {
+    if (strcmp(code, "222") == 0) {
+        acct* current = root;
+        writeToFile(root,"1.txt");
+    } else {
+        printf("You are not an employee!\n");
+    }
+}
+
+
 
 int main()
 {
@@ -245,16 +249,17 @@ int main()
     int user_acct_num = 0;
     int user_acct_num1 = 0, user_acct_num2 = 0;
     float amt = 0;
+    char code[100];
     acct* root = NULL;
 
     while (1)
     {
         int ch;
-        printf("\tWelcome to our Bank\nWe request you to choose one of the following functions\n\n");
-        printf("1. Create\n2. Deposit\n3. Check balance\n4. Transfer from one account to another account\n5. Withdraw money\n6. Delete account\n7. Exit\n \n");
+        printf("\tWelcome to our Bank\nWe request you to choose one of the following functions\n");
+        printf("1. Create\n2. Deposit\n3. Check balance\n4. Transfer from one account to another account\n5. Withdraw money\n6. Delete account\n7. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &ch);
-        printf("\n");
+
         switch (ch)
         {
         case 1:
@@ -291,15 +296,20 @@ int main()
         case 6:
             printf("Enter your account number: ");
             scanf("%d", &user_acct_num);
-            delete_account(root,user_acct_num);
+            delete_account(&root, user_acct_num);
             break;
         case 7:
             printf("Thank you for visiting our bank. Have a nice day.\n");
             exit(0);
+        case 8:printf("Enter employee code: ");
+        scanf("%s",code); // Remove the newline character
+            empl(root, code);
+            
+            break;
         default:
             printf("Please try again.\n");
             continue;
         }
     }
     return 0;
-}
+} 
